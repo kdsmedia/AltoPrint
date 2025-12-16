@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>AltoPrint</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:wght@600;700;800&family=Oswald:wght@500;700&family=Dancing+Script:wght@600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Plus Jakarta Sans', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+              serif: ['Playfair Display', 'serif'],
+              display: ['Oswald', 'sans-serif'],
+              hand: ['Dancing Script', 'cursive'],
+              typewriter: ['Courier Prime', 'monospace'],
+            },
+            colors: {
+              brand: {
+                50: '#eff6ff',
+                100: '#dbeafe',
+                200: '#bfdbfe',
+                300: '#93c5fd',
+                400: '#60a5fa',
+                500: '#3b82f6',
+                600: '#2563eb',
+                700: '#1d4ed8',
+                800: '#1e40af',
+                900: '#1e3a8a',
+              },
+              surface: '#f8fafc',
+            },
+            boxShadow: {
+              '3d': '0 10px 20px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+              '3d-hover': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+              'btn': '0 4px 0 0 rgb(203 213 225)', // Slate-300 shadow for white buttons
+              'btn-brand': '0 4px 0 0 #1e40af', // Brand-800 shadow for primary buttons
+              'btn-active': '0 0 0 0 transparent',
+              'inner-depth': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)',
+              'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+            },
+            animation: {
+              'float': 'float 6s ease-in-out infinite',
+            },
+            keyframes: {
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-10px)' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Hide scrollbar completely but allow scrolling */
+      ::-webkit-scrollbar {
+        display: none;
+      }
+      * {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+      }
+      
+      body {
+        background-color: #f1f5f9;
+        background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+        background-size: 24px 24px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        /* Prevent bounce on iOS */
+        overscroll-behavior-y: none;
+      }
+      
+      ::selection {
+        background-color: #3b82f6;
+        color: white;
+      }
+      
+      .paper-texture {
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+      }
+
+      .tear-paper {
+         position: relative;
+      }
+      
+      .tear-paper::after {
+        content: "";
+        position: absolute;
+        bottom: -6px;
+        left: 0;
+        width: 100%;
+        height: 12px;
+        background: radial-gradient(circle, transparent, transparent 50%, #fff 50%, #fff 100%) -7px -2px / 16px 16px repeat-x;
+        transform: rotate(180deg);
+        filter: drop-shadow(0 2px 1px rgba(0,0,0,0.05));
+      }
+
+      /* Scanner Customization */
+      #reader {
+        border: none !important;
+        width: 100% !important;
+      }
+      #reader video {
+        border-radius: 1rem !important;
+        object-fit: cover !important;
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+      }
+
+      /* --- Animation Utility Shims (simulating tailwindcss-animate) --- */
+      @keyframes enter {
+        from { opacity: var(--tw-enter-opacity, 1); transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0) scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), 1) rotate(var(--tw-enter-rotate, 0)); }
+      }
+      
+      .animate-in {
+        animation: enter 0.3s ease-out;
+        --tw-enter-opacity: 1;
+        --tw-enter-scale: 1;
+        --tw-enter-rotate: 0;
+        --tw-enter-translate-x: 0;
+        --tw-enter-translate-y: 0;
+      }
+      
+      .fade-in { --tw-enter-opacity: 0; }
+      .zoom-in-95 { --tw-enter-scale: 0.95; }
+      .slide-in-from-bottom-2 { --tw-enter-translate-y: 0.5rem; }
+      .slide-in-from-bottom-8 { --tw-enter-translate-y: 2rem; }
+      .slide-in-from-bottom-10 { --tw-enter-translate-y: 2.5rem; }
+      .slide-in-from-top-1 { --tw-enter-translate-y: -0.25rem; }
+      .slide-in-from-top-2 { --tw-enter-translate-y: -0.5rem; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
+    "qrcode": "https://esm.sh/qrcode@1.5.3",
+    "jsbarcode": "https://esm.sh/jsbarcode@3.11.6",
+    "html5-qrcode": "https://esm.sh/html5-qrcode@2.3.8"
+  }
+}
+</script>
+</head>
+  <body class="text-slate-900 overflow-hidden">
+    <div id="root"></div>
+  </body>
+</html>

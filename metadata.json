@@ -1,0 +1,9 @@
+{
+  "name": "AltoPrint",
+  "description": "Next-generation thermal printer controller featuring manual receipt editing and Web Bluetooth connectivity.",
+  "requestFramePermissions": [
+    "bluetooth",
+    "camera",
+    "geolocation"
+  ]
+}
