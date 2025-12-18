@@ -1,9 +1,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ReceiptData } from "../types";
 
-// Fungsi untuk mendapatkan instance AI secara aman
-const getAI = () => {
-  const apiKey = process.env.API_KEY || "DUMMY_KEY";
+// Fungsi helper untuk mendapatkan instance AI dengan aman
+const getAIInstance = () => {
+  // Menggunakan fallback jika API_KEY tidak terdefinisi agar tidak crash saat build
+  const apiKey = (typeof process !== 'undefined' && process.env?.API_KEY) || "";
   return new GoogleGenAI({ apiKey });
 };
 
@@ -17,9 +18,9 @@ If specific details (like date or tax) are missing, infer reasonable defaults or
 
 export const generateReceiptFromText = async (prompt: string): Promise<ReceiptData> => {
   try {
-    const ai = getAI();
+    const ai = getAIInstance();
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -53,7 +54,7 @@ export const generateReceiptFromText = async (prompt: string): Promise<ReceiptDa
     });
 
     const text = response.text;
-    if (!text) throw new Error("No response from AI");
+    if (!text) throw new Error("Tidak ada respon dari AI");
     
     return JSON.parse(text) as ReceiptData;
   } catch (error) {
