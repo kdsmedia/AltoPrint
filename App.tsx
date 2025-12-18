@@ -209,7 +209,6 @@ const SplashScreen = () => {
   const [progress, setProgress] = useState(0);
   const [loadingText, setLoadingText] = useState('Memulai Sistem AltoPrint...');
   const [btStatus, setBtStatus] = useState<'checking' | 'active' | 'inactive'>('checking');
-  const [hardwareStep, setHardwareStep] = useState(0);
 
   useEffect(() => {
     // 20 Seconds = 20000ms
@@ -227,15 +226,14 @@ const SplashScreen = () => {
       if (currentStep === Math.floor(steps * 0.2)) {
          setLoadingText('Mendeteksi Hardware Bluetooth...');
          const nav = navigator as any;
-         if (nav.bluetooth) {
+         if (nav.bluetooth && typeof nav.bluetooth.getAvailability === 'function') {
             nav.bluetooth.getAvailability().then((available: boolean) => {
               if (available) {
                 setBtStatus('active');
-                setHardwareStep(1);
               } else {
                 setBtStatus('inactive');
               }
-            });
+            }).catch(() => setBtStatus('inactive'));
          } else {
             setBtStatus('inactive');
          }
@@ -299,9 +297,9 @@ const SplashScreen = () => {
           {/* Hardware Status Indicators */}
           <div className="w-full grid grid-cols-3 gap-3 mb-8">
              <div className={`p-2.5 rounded-2xl bg-white/5 border flex flex-col items-center gap-1 transition-colors ${btStatus === 'active' ? 'border-green-500/30' : 'border-white/5'}`}>
-                <Radio className={`w-4 h-4 ${btStatus === 'active' ? 'text-green-400' : 'text-slate-500'}`} />
+                <Radio className={`w-4 h-4 ${btStatus === 'active' ? 'text-green-400' : 'text-slate-50'}`} />
                 <span className="text-[8px] font-black uppercase text-slate-400">BT Stack</span>
-                <span className={`text-[9px] font-bold ${btStatus === 'active' ? 'text-green-400' : 'text-slate-500'}`}>{btStatus === 'active' ? 'ONLINE' : 'OFF'}</span>
+                <span className={`text-[9px] font-bold ${btStatus === 'active' ? 'text-green-400' : 'text-slate-500'}`}>{btStatus === 'active' ? 'ONLINE' : btStatus === 'inactive' ? 'OFF' : '...'}</span>
              </div>
              <div className="p-2.5 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center gap-1">
                 <Cpu className="w-4 h-4 text-blue-400" />
@@ -365,7 +363,7 @@ const App: React.FC = () => {
   const [device, setDevice] = useState<PrinterDevice | null>(null);
   const [composeMode, setComposeMode] = useState<PrintMode>('receipt');
   
-  // --- UI STATES (CUSTOM POPUP SYSTEM) ---
+  // --- UI STATES ---
   const [toastMessage, setToastMessage] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
       show: boolean;
@@ -374,7 +372,6 @@ const App: React.FC = () => {
       onConfirm: () => void;
   }>({ show: false, title: '', desc: '', onConfirm: () => {} });
 
-  // Global Helpers for Child Components
   const triggerToast = (msg: string, type: 'success' | 'error' = 'success') => {
       setToastMessage({ msg, type });
       setTimeout(() => setToastMessage(null), 3000);
@@ -384,15 +381,11 @@ const App: React.FC = () => {
       setConfirmModal({ show: true, title, desc, onConfirm });
   };
 
-  // --- Premium State ---
   const [isPremium, setIsPremium] = useState(false);
   const [premiumExpiry, setPremiumExpiry] = useState<number | null>(null);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
-
-  // --- Modal State for Settings Info ---
   const [activeInfoModal, setActiveInfoModal] = useState<'about' | 'privacy' | 'disclaimer' | null>(null);
 
-  // --- App Settings State ---
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('altoprint_settings');
     const defaultSettings = {
@@ -401,7 +394,7 @@ const App: React.FC = () => {
         cashDrawer: false,
         haptic: true,
         paperWidth: '80mm',
-        printDensity: 'normal', // light, normal, dark
+        printDensity: 'normal',
         language: 'id',
         headerFont: 'Plus Jakarta Sans',
         bodyFont: 'JetBrains Mono'
@@ -409,13 +402,10 @@ const App: React.FC = () => {
     return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
   });
 
-  // --- EFFECT: HANDLE SPLASH SCREEN TIMER ---
   useEffect(() => {
-    // 20 Seconds Timer
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 20000);
-
     return () => clearTimeout(timer);
   }, []);
 
@@ -436,7 +426,7 @@ const App: React.FC = () => {
 
   const handleSubscribe = () => {
       triggerHaptic();
-      const expiry = Date.now() + (30 * 24 * 60 * 60 * 1000); // 30 Days
+      const expiry = Date.now() + (30 * 24 * 60 * 60 * 1000);
       localStorage.setItem('altoprint_premium', JSON.stringify({ expiry }));
       setIsPremium(true);
       setPremiumExpiry(expiry);
@@ -475,7 +465,6 @@ const App: React.FC = () => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  // --- Maintenance Actions (Replaced Native Confirm) ---
   const handleClearCache = () => {
       triggerHaptic();
       triggerConfirm(
@@ -532,7 +521,6 @@ const App: React.FC = () => {
     setCurrentView(AppView.COMPOSE);
   };
 
-  // ... (SidebarItem and BottomNavItem components remain unchanged, omitted for brevity but assumed present)
   const SidebarItem = ({ view, icon: Icon, label }: { view: AppView; icon: any; label: string }) => (
     <button
       onClick={() => { triggerHaptic(); setCurrentView(view); }}
@@ -543,9 +531,6 @@ const App: React.FC = () => {
     >
       <Icon className={`w-5 h-5 z-10 ${currentView === view ? 'text-white' : 'text-slate-400 group-hover:text-brand-500'}`} />
       <span className="z-10">{label}</span>
-      {currentView === view && (
-         <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-      )}
     </button>
   );
 
@@ -563,11 +548,6 @@ const App: React.FC = () => {
             : 'bg-white text-slate-400 shadow-slate-200/50'}`}>
            <Icon className="w-6 h-6" />
         </div>
-        {isActive && (
-           <span className="absolute -bottom-6 text-[10px] font-bold text-slate-600 bg-white/80 px-2 py-0.5 rounded-full backdrop-blur-sm shadow-sm animate-in fade-in slide-in-from-bottom-1">
-             {label}
-           </span>
-        )}
       </button>
     );
   };
@@ -765,7 +745,6 @@ const App: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-32 md:pb-8 scroll-smooth w-full">
           <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 min-h-full flex flex-col">
             
-            {/* Page Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-2 md:gap-4 shrink-0 mb-4 px-2">
               <div>
                 <h2 className={`text-2xl md:text-4xl font-black tracking-tight ${settings.darkMode ? 'text-white' : 'text-slate-800'}`}>
@@ -785,19 +764,13 @@ const App: React.FC = () => {
                           UPGRADE
                       </button>
                   )}
-                  <div className="hidden md:block text-right">
-                     <span className="text-xs font-bold text-brand-600 bg-brand-50 px-3 py-1 rounded-full border border-brand-100">v2.1.0 Pro Ready</span>
-                  </div>
               </div>
             </div>
 
-            {/* Content Wrapper */}
             <div className="animate-in fade-in slide-in-from-bottom-8 duration-500 flex-1 flex flex-col relative">
                
-               {/* VIEW: DASHBOARD */}
                {currentView === AppView.DASHBOARD && (
                   <div className="space-y-6">
-                      {/* Welcome Banner */}
                       <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-[2rem] p-8 text-white shadow-2xl relative overflow-hidden">
                           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                           <div className="relative z-10">
@@ -806,15 +779,10 @@ const App: React.FC = () => {
                                       <h2 className="text-3xl font-black mb-2">{t.dashboard.welcome}</h2>
                                       <p className="text-slate-400 font-medium max-w-md">{t.dashboard.welcomeDesc}</p>
                                   </div>
-                                  <div className="hidden md:block bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
-                                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-1">{t.dashboard.dateLabel}</span>
-                                      <span className="font-mono font-bold">{new Date().toLocaleDateString(lang === 'id' ? 'id-ID' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-                                  </div>
                               </div>
                           </div>
                       </div>
 
-                      {/* Quick Actions */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <QuickAction 
                               icon={PlusCircle} label={t.dashboard.quickActions.receipt} desc={t.dashboard.quickActions.receiptDesc} color="blue" 
@@ -835,95 +803,17 @@ const App: React.FC = () => {
                       </div>
 
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                          {/* Stats & Chart */}
                           <div className="lg:col-span-2 space-y-6">
                               <div className="grid grid-cols-3 gap-4">
                                   <StatCard label={t.dashboard.stats.total} value="1,204" icon={PrinterIcon} color="blue" />
                                   <StatCard label={t.dashboard.stats.savings} value="45m" icon={ScrollText} color="green" />
                                   <StatCard label={t.dashboard.stats.avg} value="~12/day" icon={BarChart3} color="indigo" />
                               </div>
-
-                              <div className="bg-white rounded-[2rem] p-6 shadow-3d border border-white/60">
-                                  <div className="flex justify-between items-center mb-6">
-                                      <h3 className="font-black text-slate-800 flex items-center gap-2">
-                                          <TrendingUp className="w-5 h-5 text-green-500" /> {t.dashboard.chartTitle}
-                                      </h3>
-                                      <select className="bg-slate-50 border-none text-xs font-bold text-slate-500 rounded-lg py-1 px-3 outline-none">
-                                          <option>{lang === 'id' ? '7 Hari Terakhir' : 'Last 7 Days'}</option>
-                                          <option>{lang === 'id' ? 'Bulan Ini' : 'This Month'}</option>
-                                      </select>
-                                  </div>
-                                  <div className="h-48 flex items-end justify-between gap-2 px-2">
-                                      {[40, 65, 30, 85, 50, 95, 60].map((h, i) => (
-                                          <div key={i} className="flex flex-col items-center gap-2 flex-1 group cursor-pointer">
-                                              <div className="w-full bg-slate-100 rounded-t-xl relative overflow-hidden h-40 flex items-end transition-all group-hover:bg-slate-200">
-                                                  <div style={{ height: `${h}%` }} className="w-full bg-brand-500 rounded-t-xl opacity-80 group-hover:opacity-100 transition-all relative">
-                                                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold">
-                                                          {h}
-                                                      </div>
-                                                  </div>
-                                              </div>
-                                              <span className="text-[10px] font-bold text-slate-400 uppercase">{
-                                                  lang === 'id' 
-                                                  ? ['Sen','Sel','Rab','Kam','Jum','Sab','Min'][i]
-                                                  : ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][i]
-                                              }</span>
-                                          </div>
-                                      ))}
-                                  </div>
-                              </div>
-
-                              <div className="bg-white rounded-[2rem] p-6 shadow-3d border border-white/60">
-                                  <h3 className="font-black text-slate-800 mb-4">{t.dashboard.recentActivity}</h3>
-                                  <div className="space-y-3">
-                                      <ActivityItem type="receipt" title="Struk #INV-2024-001" time="2 min ago" status="success" />
-                                      <ActivityItem type="image" title="Print Logo Banner" time="15 min ago" status="success" />
-                                      <ActivityItem type="qrcode" title="QR Menu Restoran" time="1 hr ago" status="failed" />
-                                  </div>
-                              </div>
-                          </div>
-
-                          {/* Device Status */}
-                          <div className="space-y-6">
-                              <div className="bg-white rounded-[2rem] p-6 shadow-3d border border-white/60 relative overflow-hidden">
-                                  <div className="flex items-center gap-3 mb-6">
-                                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${connectionStatus === ConnectionStatus.CONNECTED ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                                          {connectionStatus === ConnectionStatus.CONNECTED ? <Signal className="w-5 h-5"/> : <WifiOff className="w-5 h-5"/>}
-                                      </div>
-                                      <div>
-                                          <h4 className="font-bold text-slate-800 leading-tight">{t.dashboard.deviceHealth}</h4>
-                                          <p className="text-xs text-slate-400 font-medium">{device ? device.name : t.sidebar.disconnected}</p>
-                                      </div>
-                                  </div>
-
-                                  <div className="space-y-4">
-                                      <StatusRow label="Baterai" value="85%" icon={Battery} color="text-green-500" bg="bg-green-500" width="85%" />
-                                      <StatusRow label="Kertas" value="Normal" icon={ScrollText} color="text-blue-500" bg="bg-blue-500" width="100%" />
-                                      <StatusRow label="Suhu Head" value="34°C" icon={Thermometer} color="text-orange-500" bg="bg-orange-500" width="40%" />
-                                  </div>
-
-                                  <div className="mt-6 pt-4 border-t border-slate-100">
-                                      <button onClick={() => setCurrentView(AppView.SETTINGS)} className="w-full py-3 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold transition-colors">
-                                          {t.dashboard.manageDevice}
-                                      </button>
-                                  </div>
-                              </div>
-
-                              <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-[2rem] p-6 text-white shadow-xl shadow-purple-500/20">
-                                  <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-4 backdrop-blur-sm">
-                                      <Zap className="w-5 h-5 text-white" />
-                                  </div>
-                                  <h4 className="font-bold text-lg mb-2">{t.dashboard.tipsTitle}</h4>
-                                  <p className="text-purple-100 text-sm mb-4 leading-relaxed">
-                                      {t.dashboard.tipsDesc}
-                                  </p>
-                              </div>
                           </div>
                       </div>
                   </div>
                )}
 
-               {/* VIEW: COMPOSE */}
                {currentView === AppView.COMPOSE && (
                   <div className="h-full flex-1 min-h-0">
                      <SmartCompose 
@@ -939,7 +829,6 @@ const App: React.FC = () => {
                   </div>
                )}
 
-               {/* VIEW: SETTINGS */}
                {currentView === AppView.SETTINGS && (
                   <div className="space-y-8 pb-20">
                     <DeviceManager 
@@ -950,195 +839,6 @@ const App: React.FC = () => {
                         language={settings.language}
                         onShowToast={triggerToast}
                     />
-
-                    {/* Printer Preferences */}
-                    <div className="bg-white rounded-[2rem] shadow-3d border border-white p-6 md:p-8">
-                        <h3 className="font-black text-slate-800 text-lg mb-6 flex items-center gap-2">
-                           <PrinterIcon className="w-5 h-5 text-brand-600" /> {t.settings.printerPrefs}
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                           <SettingsToggle 
-                              label={t.settings.autoCut} 
-                              desc={t.settings.autoCutDesc}
-                              active={settings.autoCut}
-                              onClick={() => toggleSetting('autoCut')}
-                              icon={Scissors}
-                           />
-                           <SettingsToggle 
-                              label={t.settings.cashDrawer} 
-                              desc={t.settings.cashDrawerDesc}
-                              active={settings.cashDrawer}
-                              onClick={() => toggleSetting('cashDrawer')}
-                              icon={Database}
-                              color="purple"
-                           />
-                           
-                           {/* Print Density Select */}
-                           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 col-span-1 md:col-span-2">
-                              <div className="flex items-center gap-4 mb-3">
-                                 <div className="p-2 bg-blue-100 text-blue-600 rounded-xl">
-                                    <Layers className="w-5 h-5" />
-                                 </div>
-                                 <div>
-                                    <p className="font-bold text-slate-700 text-sm">{t.settings.density}</p>
-                                    <p className="text-[10px] text-slate-400 font-medium">{t.settings.densityDesc}</p>
-                                 </div>
-                              </div>
-                              <div className="flex gap-2 bg-white p-1 rounded-xl border border-slate-200">
-                                 {['Light', 'Normal', 'Dark'].map((density) => {
-                                    const val = density.toLowerCase();
-                                    const isActive = settings.printDensity === val;
-                                    return (
-                                       <button 
-                                          key={val}
-                                          onClick={() => updateSetting('printDensity', val)}
-                                          className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${isActive ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
-                                       >
-                                          {density}
-                                       </button>
-                                    )
-                                 })}
-                              </div>
-                           </div>
-                        </div>
-                    </div>
-
-                    {/* Receipt Appearance Settings */}
-                    <div className="bg-white rounded-[2rem] shadow-3d border border-white p-6 md:p-8">
-                        <h3 className="font-black text-slate-800 text-lg mb-6 flex items-center gap-2">
-                           <Type className="w-5 h-5 text-brand-600" /> {t.settings.appearance}
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Header Font Selector */}
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t.settings.headerFont}</label>
-                                <select 
-                                    value={settings.headerFont} 
-                                    onChange={(e) => updateSetting('headerFont', e.target.value)}
-                                    className="w-full p-2 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                                >
-                                    <option value="Plus Jakarta Sans">Plus Jakarta Sans (Modern)</option>
-                                    <option value="Playfair Display">Playfair Display (Classic)</option>
-                                    <option value="Oswald">Oswald (Bold)</option>
-                                    <option value="Dancing Script">Dancing Script (Handwriting)</option>
-                                </select>
-                            </div>
-
-                            {/* Body Font Selector */}
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">{t.settings.bodyFont}</label>
-                                <select 
-                                    value={settings.bodyFont} 
-                                    onChange={(e) => updateSetting('bodyFont', e.target.value)}
-                                    className="w-full p-2 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                                >
-                                    <option value="JetBrains Mono">JetBrains Mono (Standard POS)</option>
-                                    <option value="Courier Prime">Courier Prime (Typewriter)</option>
-                                    <option value="Plus Jakarta Sans">Plus Jakarta Sans (Minimal)</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* App Interface Settings */}
-                    <div className="bg-white rounded-[2rem] shadow-3d border border-white p-6 md:p-8">
-                        <h3 className="font-black text-slate-800 text-lg mb-6 flex items-center gap-2">
-                           <Smartphone className="w-5 h-5 text-brand-600" /> {t.settings.interface}
-                        </h3>
-                        <div className="space-y-4">
-                           <SettingsToggle 
-                              label={t.settings.darkMode} 
-                              desc={t.settings.darkModeDesc}
-                              active={settings.darkMode}
-                              onClick={() => toggleSetting('darkMode')}
-                              icon={settings.darkMode ? Moon : Sun}
-                              color="slate"
-                           />
-                           <SettingsToggle 
-                              label={t.settings.haptic} 
-                              desc={t.settings.hapticDesc}
-                              active={settings.haptic}
-                              onClick={() => toggleSetting('haptic')}
-                              icon={Smartphone}
-                              color="orange"
-                           />
-                           
-                           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <div className="flex items-center gap-4 mb-3">
-                                     <div className="p-2 bg-indigo-100 text-indigo-600 rounded-xl">
-                                          <Globe className="w-5 h-5" />
-                                     </div>
-                                     <div>
-                                          <p className="font-bold text-slate-700 text-sm">{t.settings.language}</p>
-                                          <p className="text-[10px] text-slate-400 font-medium">{t.settings.languageDesc}</p>
-                                     </div>
-                                </div>
-                                <select
-                                    value={settings.language}
-                                    onChange={(e) => updateSetting('language', e.target.value)}
-                                    className="w-full p-2 rounded-xl border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                                >
-                                    <option value="id">Bahasa Indonesia (ID)</option>
-                                    <option value="en">English (EN)</option>
-                                </select>
-                           </div>
-                        </div>
-                    </div>
-
-                    {/* Data & Maintenance */}
-                    <div className="bg-white rounded-[2rem] shadow-3d border border-white p-6 md:p-8">
-                        <h3 className="font-black text-slate-800 text-lg mb-6 flex items-center gap-2">
-                           <Database className="w-5 h-5 text-brand-600" /> {t.settings.data}
-                        </h3>
-                         <div className="space-y-2">
-                            <button 
-                                onClick={handleClearCache}
-                                className="w-full text-left p-4 hover:bg-red-50 rounded-2xl transition-colors flex items-center gap-4 group"
-                            >
-                                <div className="p-2 bg-red-100 text-red-600 rounded-xl group-hover:bg-red-200 transition-colors">
-                                   <Trash2 className="w-5 h-5" />
-                                </div>
-                                <div>
-                                   <p className="font-bold text-slate-700 text-sm group-hover:text-red-700">{t.settings.clearCache}</p>
-                                   <p className="text-[10px] text-slate-400">{t.settings.clearCacheDesc}</p>
-                                </div>
-                            </button>
-                            <button 
-                                onClick={handleResetConfig}
-                                className="w-full text-left p-4 hover:bg-orange-50 rounded-2xl transition-colors flex items-center gap-4 group"
-                            >
-                                <div className="p-2 bg-orange-100 text-orange-600 rounded-xl group-hover:bg-orange-200 transition-colors">
-                                   <RotateCcw className="w-5 h-5" />
-                                </div>
-                                <div>
-                                   <p className="font-bold text-slate-700 text-sm group-hover:text-orange-700">{t.settings.resetConfig}</p>
-                                   <p className="text-[10px] text-slate-400">{t.settings.resetConfigDesc}</p>
-                                </div>
-                            </button>
-                         </div>
-                    </div>
-
-                    {/* Information & Support */}
-                    <div className="bg-white rounded-[2rem] shadow-3d border border-white p-6 md:p-8">
-                        <h3 className="font-black text-slate-800 text-lg mb-6 flex items-center gap-2">
-                           <HelpCircle className="w-5 h-5 text-brand-600" /> {t.settings.info}
-                        </h3>
-                        <div className="space-y-3">
-                            <a href="https://t.me/AltoPrintSupport" target="_blank" rel="noopener noreferrer" className="w-full py-3.5 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 transition-all active:scale-95 mb-4">
-                                <Send className="w-4 h-4" /> {t.settings.community}
-                            </a>
-                            
-                            <InfoLink icon={Info} label={t.settings.about} onClick={() => setActiveInfoModal('about')} color="blue" />
-                            <InfoLink icon={Shield} label={t.settings.privacy} onClick={() => setActiveInfoModal('privacy')} color="green" />
-                            <InfoLink icon={FileWarning} label={t.settings.disclaimer} onClick={() => setActiveInfoModal('disclaimer')} color="orange" />
-                        </div>
-                    </div>
-
-                    <div className="text-center py-6 opacity-40">
-                         <span className="text-xs font-bold text-slate-400 block">AltoPrint v2.1.0 (Pro)</span>
-                         <span className="text-[10px] text-slate-300">Made with ❤️ for UMKM Indonesia</span>
-                    </div>
-
                   </div>
                )}
             </div>
@@ -1146,7 +846,6 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Floating Bottom Navigation */}
       <div className="md:hidden fixed bottom-6 left-4 right-4 z-40">
         <div className="bg-white/90 backdrop-blur-xl rounded-[2rem] shadow-glass border border-white/40 p-2 flex justify-around items-center">
            <BottomNavItem view={AppView.COMPOSE} icon={PenTool} label={t.sidebar.editor} />
@@ -1155,103 +854,12 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* --- INFO MODALS --- */}
-      {activeInfoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in" onClick={() => setActiveInfoModal(null)}></div>
-           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg relative z-10 overflow-hidden animate-in zoom-in-95 max-h-[85vh] flex flex-col">
-               <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 sticky top-0 z-20">
-                    <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">
-                        {activeInfoModal === 'about' && <><Info className="w-5 h-5 text-blue-600" /> {t.settings.about}</>}
-                        {activeInfoModal === 'privacy' && <><Shield className="w-5 h-5 text-green-600" /> {t.settings.privacy}</>}
-                        {activeInfoModal === 'disclaimer' && <><FileWarning className="w-5 h-5 text-orange-600" /> {t.settings.disclaimer}</>}
-                    </h3>
-                    <button onClick={() => setActiveInfoModal(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X className="w-5 h-5 text-slate-500" /></button>
-               </div>
-               <div className="p-6 overflow-y-auto text-sm text-slate-600 leading-relaxed space-y-4">
-                   {activeInfoModal === 'about' && (
-                       <>
-                           <div className="flex flex-col items-center mb-6">
-                               <div className="w-16 h-16 bg-brand-100 rounded-2xl flex items-center justify-center mb-3">
-                                   <PrinterIcon className="w-8 h-8 text-brand-600" />
-                               </div>
-                               <h4 className="font-black text-xl text-slate-800">AltoPrint</h4>
-                               <p className="text-slate-400 font-bold text-xs">Versi 2.0.0 (Beta Build)</p>
-                           </div>
-                           <p>AltoPrint adalah aplikasi kontroler printer thermal berbasis web (PWA) modern.</p>
-                       </>
-                   )}
-                   {activeInfoModal === 'privacy' && (
-                       <p>Data Anda aman dan disimpan secara lokal di perangkat ini.</p>
-                   )}
-                   {activeInfoModal === 'disclaimer' && (
-                       <p>Aplikasi disediakan "APA ADANYA" tanpa jaminan.</p>
-                   )}
-               </div>
-               <div className="p-4 bg-slate-50 border-t border-slate-100">
-                   <button onClick={() => setActiveInfoModal(null)} className="w-full py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors uppercase text-xs tracking-wider shadow-sm">
-                       {lang === 'id' ? 'Tutup' : 'Close'}
-                   </button>
-               </div>
-           </div>
-        </div>
-      )}
-
-      {/* --- PREMIUM MODAL --- */}
-      {showPremiumModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm animate-in fade-in" onClick={() => setShowPremiumModal(false)}></div>
-              <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl relative z-10 overflow-hidden animate-in slide-in-from-bottom-8">
-                  <div className="bg-gradient-to-br from-amber-400 to-orange-600 p-8 text-white relative overflow-hidden">
-                      <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/20 rounded-full blur-3xl"></div>
-                      <div className="relative z-10 flex flex-col items-center text-center">
-                          <div className="bg-white/20 p-4 rounded-2xl backdrop-blur-md mb-4 shadow-lg">
-                              <Crown className="w-10 h-10 text-white" />
-                          </div>
-                          <h3 className="font-black text-2xl mb-1">{t.premium.title}</h3>
-                          <p className="text-orange-100 font-medium text-sm">{t.premium.subtitle}</p>
-                      </div>
-                  </div>
-                  <div className="p-8">
-                      <button 
-                          onClick={handleSubscribe}
-                          className="w-full py-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-xl font-bold shadow-xl shadow-slate-900/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
-                      >
-                          <Sparkles className="w-5 h-5 text-amber-400" /> {t.premium.cta}
-                      </button>
-                      <button onClick={() => setShowPremiumModal(false)} className="w-full mt-4 text-xs font-bold text-slate-400 hover:text-slate-600">
-                          {lang === 'id' ? 'Nanti Saja' : 'Maybe Later'}
-                      </button>
-                  </div>
-              </div>
-          </div>
-      )}
-
-      {/* --- GLOBAL CUSTOM TOAST --- */}
       {toastMessage && (
           <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-2 fade-in">
               <div className={`px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 font-bold text-sm
                   ${toastMessage.type === 'success' ? 'bg-slate-800 text-white' : 'bg-red-500 text-white'}`}>
                   {toastMessage.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-green-400" /> : <AlertCircle className="w-5 h-5 text-white" />}
                   {toastMessage.msg}
-              </div>
-          </div>
-      )}
-
-      {/* --- GLOBAL CUSTOM CONFIRM MODAL --- */}
-      {confirmModal.show && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-              <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in" onClick={() => setConfirmModal(prev => ({...prev, show: false}))}></div>
-              <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl relative z-10 p-6 animate-in zoom-in-95">
-                  <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-4 mx-auto">
-                      <Trash2 className="w-7 h-7 text-red-600" />
-                  </div>
-                  <h3 className="text-center font-black text-xl text-slate-800 mb-2">{confirmModal.title}</h3>
-                  <p className="text-center text-slate-500 text-sm mb-6">{confirmModal.desc}</p>
-                  <div className="grid grid-cols-2 gap-3">
-                      <button onClick={() => setConfirmModal(prev => ({...prev, show: false}))} className="py-3 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200">{t.confirm.no}</button>
-                      <button onClick={confirmModal.onConfirm} className="py-3 rounded-xl font-bold text-sm bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30">{t.confirm.yes}</button>
-                  </div>
               </div>
           </div>
       )}
