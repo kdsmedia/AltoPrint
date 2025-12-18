@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, PenTool, Settings, Printer as PrinterIcon, WifiOff, Signal, Zap, FileText, Clock, BarChart3, Moon, Sun, Scissors, Layers, Database, Globe, Smartphone, ChevronRight, HelpCircle, Shield, RotateCcw, Trash2, PlusCircle, ScanLine, Image, Wrench, TrendingUp, Battery, Thermometer, CheckCircle2, XCircle, ScrollText, Usb, Cable, Info, FileWarning, Send, X, Type, Crown, Check, Star, Sparkles, AlertCircle, Loader2, Cpu, HardDrive } from 'lucide-react';
+import { LayoutDashboard, PenTool, Settings, Printer as PrinterIcon, WifiOff, Signal, Zap, FileText, Clock, BarChart3, Moon, Sun, Scissors, Layers, Database, Globe, Smartphone, ChevronRight, HelpCircle, Shield, RotateCcw, Trash2, PlusCircle, ScanLine, Image, Wrench, TrendingUp, Battery, Thermometer, CheckCircle2, XCircle, ScrollText, Usb, Cable, Info, FileWarning, Send, X, Type, Crown, Check, Star, Sparkles, AlertCircle, Loader2, Cpu, HardDrive, Radio } from 'lucide-react';
 import { ConnectionStatus, PrinterDevice, AppView, PrintMode } from './types';
 import DeviceManager from './components/DeviceManager';
 import SmartCompose from './components/SmartCompose';
@@ -207,13 +207,14 @@ const TRANSLATIONS = {
 // --- SPLASH SCREEN COMPONENT ---
 const SplashScreen = () => {
   const [progress, setProgress] = useState(0);
-  const [loadingText, setLoadingText] = useState('Initializing System...');
+  const [loadingText, setLoadingText] = useState('Memulai Sistem AltoPrint...');
   const [btStatus, setBtStatus] = useState<'checking' | 'active' | 'inactive'>('checking');
+  const [hardwareStep, setHardwareStep] = useState(0);
 
   useEffect(() => {
     // 20 Seconds = 20000ms
     const duration = 20000;
-    const intervalTime = 100; // Update every 100ms
+    const intervalTime = 50; 
     const steps = duration / intervalTime;
     let currentStep = 0;
 
@@ -222,42 +223,37 @@ const SplashScreen = () => {
       const percentage = Math.min(100, (currentStep / steps) * 100);
       setProgress(percentage);
 
-      // REAL HARDWARE CHECK LOGIC
-      if (currentStep === Math.floor(steps * 0.3)) { // At 30% (~6 seconds)
-         setLoadingText('Initializing Bluetooth Controller...');
-         // Check Bluetooth Availability
+      // AUTOMATIC BLUETOOTH "ACTIVATION" & STATUS CHECK
+      if (currentStep === Math.floor(steps * 0.2)) {
+         setLoadingText('Mendeteksi Hardware Bluetooth...');
          const nav = navigator as any;
          if (nav.bluetooth) {
-             nav.bluetooth.getAvailability().then((available: boolean) => {
-                 if (available) {
-                     setBtStatus('active');
-                     // Try to see if we have permitted devices (this acts as "activating" the list)
-                     if (nav.bluetooth.getDevices) {
-                         nav.bluetooth.getDevices().then((devices: any[]) => {
-                             console.log("Pre-authorized devices:", devices.length);
-                         });
-                     }
-                 } else {
-                     setBtStatus('inactive');
-                 }
-             });
+            nav.bluetooth.getAvailability().then((available: boolean) => {
+              if (available) {
+                setBtStatus('active');
+                setHardwareStep(1);
+              } else {
+                setBtStatus('inactive');
+              }
+            });
          } else {
-             setBtStatus('inactive');
+            setBtStatus('inactive');
          }
       }
 
-      // Dynamic Text based on percentage & real status
-      if (percentage < 15) setLoadingText('Checking Memory Integrity...');
-      else if (percentage < 30) setLoadingText('Loading Thermal Driver v2.1...');
-      else if (percentage < 45) {
-          if (btStatus === 'checking') setLoadingText('Initializing Bluetooth Controller...');
-          else if (btStatus === 'active') setLoadingText('Bluetooth Adapter Active...');
-          else setLoadingText('Bluetooth Adapter Not Detected...');
+      // Dynamic sequence
+      if (percentage < 10) setLoadingText('Verifikasi Integritas Kernel...');
+      else if (percentage < 25) setLoadingText('Menginisialisasi Modul Bluetooth...');
+      else if (percentage < 40) {
+          if (btStatus === 'active') setLoadingText('Antarmuka Bluetooth Aktif (RFCOMM ready)...');
+          else if (btStatus === 'inactive') setLoadingText('Peringatan: Bluetooth Tidak Ditemukan!');
+          else setLoadingText('Menghubungkan ke Stack Bluetooth...');
       }
-      else if (percentage < 60) setLoadingText('Syncing Local Assets...');
-      else if (percentage < 80) setLoadingText('Configuring UI Modules...');
-      else if (percentage < 95) setLoadingText('Finalizing Setup...');
-      else setLoadingText('Ready to Launch.');
+      else if (percentage < 55) setLoadingText('Sinkronisasi Database Template...');
+      else if (percentage < 70) setLoadingText('Memuat Driver Printer ESC/POS v2.1...');
+      else if (percentage < 85) setLoadingText('Menyiapkan UI Engine (PWA Core)...');
+      else if (percentage < 95) setLoadingText('Hampir selesai, memvalidasi konfigurasi...');
+      else setLoadingText('Aplikasi Siap Digunakan.');
 
       if (currentStep >= steps) {
         clearInterval(timer);
@@ -268,51 +264,93 @@ const SplashScreen = () => {
   }, [btStatus]);
 
   return (
-    <div className="fixed inset-0 bg-[#0f172a] z-[9999] flex flex-col items-center justify-center text-slate-200 select-none">
-       {/* Background Decor */}
-       <div className="absolute top-0 left-0 w-full h-full overflow-hidden opacity-20 pointer-events-none">
-          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-600 rounded-full blur-[120px] animate-pulse"></div>
-          <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-indigo-600 rounded-full blur-[120px] animate-pulse"></div>
+    <div className="fixed inset-0 bg-[#0f172a] z-[9999] flex flex-col items-center justify-center text-slate-200 select-none overflow-hidden">
+       {/* Ambient Background Effects */}
+       <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-blue-900/30 rounded-full blur-[150px] animate-pulse"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-indigo-900/30 rounded-full blur-[150px] animate-pulse"></div>
+          
+          {/* Subtle Grid Pattern */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
        </div>
 
-       <div className="relative z-10 flex flex-col items-center w-full max-w-xs">
-          {/* Logo Animation */}
-          <div className="relative mb-12">
-             <div className="absolute inset-0 bg-blue-500 blur-2xl opacity-20 animate-pulse"></div>
-             <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/20 animate-float">
-                <PrinterIcon className="w-12 h-12 text-white" />
+       <div className="relative z-10 flex flex-col items-center w-full max-w-sm px-8">
+          {/* 3D Animated Logo Container */}
+          <div className="relative mb-16">
+             <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-20 animate-pulse"></div>
+             <div className="w-28 h-28 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[2rem] flex items-center justify-center shadow-[0_20px_50px_rgba(37,99,235,0.3)] animate-float border border-white/10">
+                <PrinterIcon className="w-14 h-14 text-white drop-shadow-lg" />
+             </div>
+             {/* Orbital Sync Animation */}
+             <div className="absolute -inset-4 border-2 border-blue-500/20 rounded-full animate-[spin_10s_linear_infinite]">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-blue-400 rounded-full shadow-[0_0_10px_#60a5fa]"></div>
              </div>
           </div>
 
-          <h1 className="text-4xl font-black tracking-tight text-white mb-2">AltoPrint</h1>
-          <p className="text-xs font-bold tracking-[0.2em] text-blue-400 uppercase mb-10">Pro Thermal Controller</p>
-
-          {/* Progress Bar Container */}
-          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mb-4 relative shadow-inner">
-             <div 
-                className="h-full bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full transition-all duration-100 ease-linear shadow-[0_0_10px_rgba(59,130,246,0.5)]"
-                style={{ width: `${progress}%` }}
-             ></div>
+          <div className="text-center mb-10">
+              <h1 className="text-4xl font-black tracking-tighter text-white mb-2">AltoPrint</h1>
+              <div className="flex items-center justify-center gap-2">
+                 <div className="h-px w-8 bg-blue-500/50"></div>
+                 <p className="text-[10px] font-bold tracking-[0.3em] text-blue-400 uppercase">Pro System v2.1</p>
+                 <div className="h-px w-8 bg-blue-500/50"></div>
+              </div>
           </div>
 
-          {/* Stats Row */}
-          <div className="flex justify-between w-full text-[10px] font-mono font-bold text-slate-500 mb-2">
-             <span className="flex items-center gap-1">
-                 <Cpu className="w-3 h-3" /> BT: 
-                 <span className={btStatus === 'active' ? 'text-green-400' : btStatus === 'inactive' ? 'text-red-400' : 'text-slate-500'}>
-                     {btStatus === 'checking' ? '...' : btStatus === 'active' ? 'ON' : 'OFF'}
-                 </span>
-             </span>
-             <span className="flex items-center gap-1"><HardDrive className="w-3 h-3" /> MEM: OK</span>
-             <span>{Math.round(progress)}%</span>
+          {/* Hardware Status Indicators */}
+          <div className="w-full grid grid-cols-3 gap-3 mb-8">
+             <div className={`p-2.5 rounded-2xl bg-white/5 border flex flex-col items-center gap-1 transition-colors ${btStatus === 'active' ? 'border-green-500/30' : 'border-white/5'}`}>
+                <Radio className={`w-4 h-4 ${btStatus === 'active' ? 'text-green-400' : 'text-slate-500'}`} />
+                <span className="text-[8px] font-black uppercase text-slate-400">BT Stack</span>
+                <span className={`text-[9px] font-bold ${btStatus === 'active' ? 'text-green-400' : 'text-slate-500'}`}>{btStatus === 'active' ? 'ONLINE' : 'OFF'}</span>
+             </div>
+             <div className="p-2.5 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center gap-1">
+                <Cpu className="w-4 h-4 text-blue-400" />
+                <span className="text-[8px] font-black uppercase text-slate-400">Memory</span>
+                <span className="text-[9px] font-bold text-blue-400">98% OK</span>
+             </div>
+             <div className="p-2.5 rounded-2xl bg-white/5 border border-white/5 flex flex-col items-center gap-1">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span className="text-[8px] font-black uppercase text-slate-400">Engine</span>
+                <span className="text-[9px] font-bold text-amber-400">WARM</span>
+             </div>
           </div>
 
-          <p className="text-xs font-medium text-slate-400 animate-pulse transition-all duration-300 min-h-[1.5em] text-center">{loadingText}</p>
+          {/* Progress Section */}
+          <div className="w-full space-y-4">
+             <div className="flex justify-between items-end">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Inisialisasi</span>
+                <span className="text-xl font-black text-white">{Math.round(progress)}%</span>
+             </div>
+             
+             <div className="w-full h-2 bg-slate-800/50 rounded-full overflow-hidden relative border border-white/5">
+                <div 
+                   className="h-full bg-gradient-to-r from-blue-600 via-indigo-500 to-blue-400 rounded-full transition-all duration-150 ease-linear shadow-[0_0_15px_rgba(59,130,246,0.6)]"
+                   style={{ width: `${progress}%` }}
+                ></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent w-full h-full -translate-x-full animate-[shimmer_2s_infinite]"></div>
+             </div>
+
+             <div className="flex items-center justify-center gap-3">
+                <Loader2 className="w-3 h-3 text-blue-500 animate-spin" />
+                <p className="text-xs font-bold text-slate-400 text-center transition-all duration-300 min-h-[1.5em]">{loadingText}</p>
+             </div>
+          </div>
        </div>
        
-       <div className="absolute bottom-8 text-[10px] text-slate-600 font-bold tracking-widest uppercase">
-          v2.1.0 • Stable Build
+       <div className="absolute bottom-10 flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2 text-[9px] text-slate-600 font-bold uppercase tracking-[0.3em]">
+             <span>Secure Build</span>
+             <div className="w-1 h-1 bg-slate-700 rounded-full"></div>
+             <span>UMKM Ecosystem</span>
+          </div>
+          <div className="text-[8px] text-slate-700 font-mono">Build ID: 0x88f219-ALTO-PRO-2025</div>
        </div>
+
+       <style>{`
+          @keyframes shimmer {
+             100% { transform: translateX(100%); }
+          }
+       `}</style>
     </div>
   );
 };
