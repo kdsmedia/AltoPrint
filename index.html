@@ -4,10 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>AltoPrint - Pro Thermal Controller</title>
-    <!-- Shim paling atas untuk mencegah crash global -->
+    <!-- Robust Shim for Environment Globals -->
     <script>
-      window.process = { env: { API_KEY: "" } };
-      window.global = window;
+      (function() {
+        window.global = window;
+        window.process = {
+          env: { 
+            NODE_ENV: 'production',
+            API_KEY: '' 
+          },
+          browser: true,
+          version: '',
+          nextTick: function(fn) { setTimeout(fn, 0); }
+        };
+      })();
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -36,9 +46,11 @@
       ::-webkit-scrollbar { display: none; }
       * { -ms-overflow-style: none; scrollbar-width: none; }
       body {
-        background-color: #f1f5f9;
+        background-color: #0f172a; /* Menyamakan warna background dengan splash screen */
         -webkit-font-smoothing: antialiased;
         overscroll-behavior-y: none;
+        margin: 0;
+        padding: 0;
       }
       @keyframes float {
         0%, 100% { transform: translateY(0); }
@@ -46,6 +58,7 @@
       }
       .animate-float { animation: float 6s ease-in-out infinite; }
     </style>
+    <!-- Simplified and Corrected Import Map -->
     <script type="importmap">
 {
   "imports": {
@@ -65,6 +78,13 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Entry point -->
     <script type="module" src="./index.tsx"></script>
+    <noscript>
+      <div style="color: white; text-align: center; padding: 50px; font-family: sans-serif;">
+        <h1>JavaScript Diperlukan</h1>
+        <p>Silakan aktifkan JavaScript untuk menggunakan AltoPrint.</p>
+      </div>
+    </noscript>
   </body>
 </html>
