@@ -1,7 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ReceiptData } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Fungsi untuk mendapatkan instance AI secara aman
+const getAI = () => {
+  const apiKey = process.env.API_KEY || "DUMMY_KEY";
+  return new GoogleGenAI({ apiKey });
+};
 
 const SYSTEM_INSTRUCTION = `
 You are an intelligent Point of Sale (POS) assistant. 
@@ -13,6 +17,7 @@ If specific details (like date or tax) are missing, infer reasonable defaults or
 
 export const generateReceiptFromText = async (prompt: string): Promise<ReceiptData> => {
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
